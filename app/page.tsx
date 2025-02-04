@@ -1,101 +1,198 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import NoteList from "./components/NoteList";
+import NoteEditor from "./components/NoteEditor";
+import ThemeSelector from "./components/ThemeSelector";
+import { useTheme } from "../contexts/ThemeContext";
+import { Button } from "@/components/ui/button";
+import { PlusCircle, User } from "lucide-react";
+import CustomThemeModal from "./components/CustomThemeModal";
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  query,
+  where,
+  orderBy,
+  getDocs,
+} from "firebase/firestore";
+import { db } from "../lib/firebase";
+import { useAuth } from "@/contexts/AuthContext";
+import LoginPage from "./components/LoginPage";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import Image from "next/image";
 
-export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+export type Note = {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
+  status: string;
+};
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+export default function Home() {
+  const { user, signOut } = useAuth();
+  const { currentTheme } = useTheme();
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [isCustomThemeModalOpen, setIsCustomThemeModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchNotes = async () => {
+      const notesCollection = collection(db, "notes");
+      const q = query(
+        notesCollection,
+        where("userId", "==", user.uid),
+        orderBy("updatedAt", "desc")
+      );
+      const notesSnapshot = await getDocs(q);
+      const fetchedNotes = notesSnapshot.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() } as Note)
+      );
+      setNotes(fetchedNotes);
+    };
+
+    fetchNotes();
+  }, [user]);
+
+  if (!user) {
+    return <LoginPage />;
+  }
+
+  const addNote = async () => {
+    const newNote = {
+      title: "Untitled Note",
+      content: "",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      userId: user.uid,
+      status: "pending",
+    };
+    const docRef = await addDoc(collection(db, "notes"), newNote);
+    setNotes((prev) => [...prev, { id: docRef.id, ...newNote }]);
+  };
+
+  const deleteNote = async (id: string) => {
+    await deleteDoc(doc(db, "notes", id));
+    setNotes((prev) => prev.filter((note) => note.id !== id));
+    if (selectedNote && selectedNote.id === id) {
+      setSelectedNote(null);
+    }
+  };
+
+  const updateNote = async (id: string, title: string, content: string) => {
+    await updateDoc(doc(db, "notes", id), {
+      title,
+      content,
+      updatedAt: new Date().toISOString(),
+    });
+    setNotes((prev) =>
+      prev.map((note) => (note.id === id ? { ...note, title, content } : note))
+    );
+  };
+
+  return (
+    <div className="note-paper">
+      <div className="container mx-auto p-4">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className={`text-2xl font-bold text-${currentTheme.primary}`}>
+            Notes
+          </h1>
+          <div className="flex items-center space-x-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button className="flex items-center gap-2">
+                  {user.photoURL ? (
+                    <Image
+                      src={user.photoURL}
+                      alt="Profile"
+                      width={24}
+                      height={24}
+                      className="rounded-full"
+                    />
+                  ) : (
+                    <User className="w-4 h-4" />
+                  )}
+                  {user.displayName}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <div className="flex flex-col p-2 gap-2">
+                  <div className="flex items-center gap-2">
+                    {user.photoURL ? (
+                      <Image
+                        src={user.photoURL}
+                        alt="Profile"
+                        width={40}
+                        height={40}
+                        className="rounded-full"
+                      />
+                    ) : (
+                      <User className="w-10 h-10" />
+                    )}
+                    <div className="flex flex-col">
+                      <p className="font-medium">{user.displayName}</p>
+                      <p className="text-sm text-gray-500">{user.email}</p>
+                    </div>
+                  </div>
+                  <DropdownMenuItem asChild>
+                    <Button
+                      variant="destructive"
+                      className="w-full"
+                      onClick={signOut}
+                    >
+                      Logout
+                    </Button>
+                  </DropdownMenuItem>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <ThemeSelector />
+            <Button
+              onClick={() => setIsCustomThemeModalOpen(true)}
+              variant="outline"
+            >
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Custom Theme
+            </Button>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div
+            className={`md:col-span-1 bg-${currentTheme.secondary} bg-opacity-10 rounded-lg p-4`}
+          >
+            <Button onClick={addNote} className="w-full mb-4">
+              <PlusCircle className="w-4 h-4 mr-2" />
+              New Note
+            </Button>
+            <NoteList
+              deleteNote={deleteNote}
+              selectedNote={selectedNote}
+              setSelectedNote={setSelectedNote}
+              notes={notes}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <NoteEditor note={selectedNote} updateNote={updateNote} />
+          </div>
+        </div>
+      </div>
+      <CustomThemeModal
+        isOpen={isCustomThemeModalOpen}
+        onClose={() => setIsCustomThemeModalOpen(false)}
+      />
     </div>
   );
 }
