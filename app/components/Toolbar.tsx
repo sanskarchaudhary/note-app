@@ -32,6 +32,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { FontSelector } from "./FontSelector";
 
 interface ToolbarProps {
   editor: Editor | null;
@@ -529,6 +530,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             </div>
           </PopoverContent>
         </Popover>
+      </ToolbarGroup>
+
+      <ToolbarDivider />
+
+      <ToolbarGroup>
+        <FontSelector editor={editor} />
       </ToolbarGroup>
     </div>
   );

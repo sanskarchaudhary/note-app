@@ -68,7 +68,11 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, updateNote }) => {
         },
       }),
       Image,
-      TextStyle,
+      TextStyle.configure({
+        HTMLAttributes: {
+          style: "",
+        },
+      }),
       Color,
       Highlight.configure({ multicolor: true }),
       Underline,

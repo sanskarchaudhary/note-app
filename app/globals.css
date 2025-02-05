@@ -362,27 +362,95 @@ body {
 }
 
 /* Font styles for editor content */
-.ProseMirror .font-handwriting {
-  font-family: var(--font-handwriting);
+.ProseMirror .font-arial {
+  font-family: Arial, sans-serif;
 }
-
-.ProseMirror .font-cursive {
-  font-family: var(--font-cursive);
+.ProseMirror .font-times {
+  font-family: "Times New Roman", Times, serif;
 }
-
-.ProseMirror .font-casual {
-  font-family: var(--font-casual);
+.ProseMirror .font-calibri {
+  font-family: Calibri, sans-serif;
+}
+.ProseMirror .font-cambria {
+  font-family: Cambria, Georgia, serif;
+}
+.ProseMirror .font-georgia {
+  font-family: Georgia, serif;
+}
+.ProseMirror .font-verdana {
+  font-family: Verdana, Geneva, sans-serif;
+}
+.ProseMirror .font-helvetica {
+  font-family: Helvetica, Arial, sans-serif;
+}
+.ProseMirror .font-tahoma {
+  font-family: Tahoma, Geneva, sans-serif;
+}
+.ProseMirror .font-trebuchet {
+  font-family: "Trebuchet MS", sans-serif;
+}
+.ProseMirror .font-comic {
+  font-family: "Comic Sans MS", cursive;
+}
+.ProseMirror .font-impact {
+  font-family: Impact, Charcoal, sans-serif;
+}
+.ProseMirror .font-courier {
+  font-family: "Courier New", Courier, monospace;
+}
+.ProseMirror .font-garamond {
+  font-family: Garamond, serif;
+}
+.ProseMirror .font-palatino {
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+}
+.ProseMirror .font-bookman {
+  font-family: "Bookman Old Style", serif;
 }
 
 /* Preview styles in font selector */
-.font-selector .font-handwriting {
-  font-family: var(--font-handwriting);
+.font-arial {
+  font-family: Arial, sans-serif;
 }
-
-.font-selector .font-cursive {
-  font-family: var(--font-cursive);
+.font-times {
+  font-family: "Times New Roman", Times, serif;
 }
-
-.font-selector .font-casual {
-  font-family: var(--font-casual);
+.font-calibri {
+  font-family: Calibri, sans-serif;
+}
+.font-cambria {
+  font-family: Cambria, Georgia, serif;
+}
+.font-georgia {
+  font-family: Georgia, serif;
+}
+.font-verdana {
+  font-family: Verdana, Geneva, sans-serif;
+}
+.font-helvetica {
+  font-family: Helvetica, Arial, sans-serif;
+}
+.font-tahoma {
+  font-family: Tahoma, Geneva, sans-serif;
+}
+.font-trebuchet {
+  font-family: "Trebuchet MS", sans-serif;
+}
+.font-comic {
+  font-family: "Comic Sans MS", cursive;
+}
+.font-impact {
+  font-family: Impact, Charcoal, sans-serif;
+}
+.font-courier {
+  font-family: "Courier New", Courier, monospace;
+}
+.font-garamond {
+  font-family: Garamond, serif;
+}
+.font-palatino {
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+}
+.font-bookman {
+  font-family: "Bookman Old Style", serif;
 }
