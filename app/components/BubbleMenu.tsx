@@ -1,15 +1,7 @@
 import { BubbleMenu as TiptapBubbleMenu } from "@tiptap/react";
-import {
-  Bold,
-  Italic,
-  Underline,
-  Highlighter,
-  Link,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Bold, Italic, Underline, Highlighter } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
 import type { Editor } from "@tiptap/react";
 
 interface BubbleMenuProps {

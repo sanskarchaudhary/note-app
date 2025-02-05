@@ -8,6 +8,7 @@ const nextConfig = {
         pathname: "/a/**",
       },
     ],
+    domains: ["firebasestorage.googleapis.com"],
   },
 };
 

@@ -406,7 +406,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, updateNote }) => {
       >
         <EditorContent
           editor={editor}
-          className="h-full prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none"
+          className="h-full prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none font-cursive"
           style={{
             backgroundColor: getHslColor(currentTheme.background),
             color: getHslColor(currentTheme.text),
