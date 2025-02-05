@@ -52,15 +52,16 @@ export const FontSelector: React.FC<FontSelectorProps> = ({ editor }) => {
   if (!editor) return null;
 
   const setFontFamily = (fontFamily: string) => {
-    // First unset any existing font-family
-    editor.chain().focus().unsetMark("textStyle").run();
+    if (editor.state.selection.empty) {
+      editor.commands.selectAll();
+    }
 
-    // Then apply the new font-family
+    // Apply font family directly to the node
     editor
       .chain()
       .focus()
       .setMark("textStyle", {
-        style: `font-family: ${fontFamily}`,
+        style: `font-family: ${fontFamily} !important`,
       })
       .run();
 
@@ -72,14 +73,21 @@ export const FontSelector: React.FC<FontSelectorProps> = ({ editor }) => {
   };
 
   const getCurrentFont = () => {
+    if (!editor.state.selection || editor.state.selection.empty) {
+      return "Font";
+    }
+
     const attrs = editor.getAttributes("textStyle");
-    const fontFamily = attrs?.style?.match(/font-family: ([^;]+)/)?.[1];
+    const style = attrs?.style || "";
+    const match = style.match(/font-family:\s*([^;]+)/);
+    const fontFamily = match ? match[1].trim() : null;
+
     if (!fontFamily) return "Font";
 
     const font = Object.values(FONTS)
       .flat()
-      .find((f) => f.value === fontFamily);
-    return font?.label || fontFamily;
+      .find((f) => f.value.includes(fontFamily.replace(/['"]/g, "")));
+    return font?.label || "Font";
   };
 
   const filteredFonts = Object.entries(FONTS).reduce(
