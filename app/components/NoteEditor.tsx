@@ -14,10 +14,24 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
-import { Save } from "lucide-react";
+import { Save, Download } from "lucide-react";
 import { Toolbar } from "./Toolbar";
 import { SketchPad } from "./SketchPad";
 import Heading from "@tiptap/extension-heading";
+import Table from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableCell from "@tiptap/extension-table-cell";
+import TableHeader from "@tiptap/extension-table-header";
+import BulletList from "@tiptap/extension-bullet-list";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { BubbleMenu } from "./BubbleMenu";
+import CharacterCount from "@tiptap/extension-character-count";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import html2pdf from "html2pdf.js";
+import { WPMCounter } from "./WPMCounter";
+import { motion, AnimatePresence } from "framer-motion";
+import FontSize from "@tiptap/extension-font-size";
 
 type NoteEditorProps = {
   note: Note | null;
@@ -34,11 +48,24 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, updateNote }) => {
   const [showSketchPad, setShowSketchPad] = useState(false);
   const [lastSavedContent, setLastSavedContent] = useState(note?.content || "");
   const [lastSavedTitle, setLastSavedTitle] = useState(note?.title || "");
+  const [isUploading, setIsUploading] = useState(false);
 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading: false, // We'll configure it separately
+        heading: {
+          levels: [1, 2, 3],
+        },
+        bulletList: {
+          HTMLAttributes: {
+            class: "list-disc ml-4",
+          },
+        },
+        orderedList: {
+          HTMLAttributes: {
+            class: "list-decimal ml-4",
+          },
+        },
       }),
       Image,
       TextStyle,
@@ -46,11 +73,22 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, updateNote }) => {
       Highlight.configure({ multicolor: true }),
       Underline,
       TextAlign.configure({
-        types: ["heading", "paragraph"],
+        types: ["heading", "paragraph", "table"],
         alignments: ["left", "center", "right"],
       }),
       Heading.configure({
         levels: [1, 2, 3],
+      }),
+      Table.configure({
+        resizable: true,
+      }),
+      TableRow,
+      TableCell,
+      TableHeader,
+      BulletList.configure({
+        HTMLAttributes: {
+          class: "list-disc ml-4",
+        },
       }),
       Placeholder.configure({
         placeholder: ({ node }) => {
@@ -60,11 +98,29 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, updateNote }) => {
           return "Press '/' for commands...";
         },
       }),
+      CharacterCount.configure({
+        limit: null,
+      }),
+      FontSize.configure({
+        types: ["textStyle"],
+      }),
     ],
     content: note?.content || "",
     editorProps: {
       attributes: {
         class: "prose prose-lg max-w-none focus:outline-none",
+        spellcheck: "true",
+      },
+      handleDrop: (view, event, slice, moved) => {
+        if (!moved && event.dataTransfer?.files.length) {
+          // Handle file drops (images, etc.)
+          const file = event.dataTransfer.files[0];
+          if (file.type.startsWith("image/")) {
+            handleImageUpload(file);
+            return true;
+          }
+        }
+        return false;
       },
     },
     onUpdate: ({ editor }) => {
@@ -125,19 +181,59 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, updateNote }) => {
 
   const handleImageUpload = useCallback(
     async (file: File) => {
+      if (!user || !editor) return;
+
       try {
-        // Temporary solution - convert to data URL
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const dataUrl = e.target?.result as string;
-          editor?.chain().focus().setImage({ src: dataUrl }).run();
-        };
-        reader.readAsDataURL(file);
+        // Validate file type and size
+        if (!file.type.startsWith("image/")) {
+          throw new Error("Please upload an image file");
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+          // 5MB limit
+          throw new Error("Image size should be less than 5MB");
+        }
+
+        // Show loading state
+        setIsUploading(true);
+        setSaveStatus("saving");
+
+        // Upload to Firebase Storage
+        const storage = getStorage();
+        const fileExt = file.name.split(".").pop();
+        const fileName = `${Date.now()}-${Math.random()
+          .toString(36)
+          .substring(2)}.${fileExt}`;
+        const storageRef = ref(storage, `images/${user.uid}/${fileName}`);
+
+        // Upload file
+        const snapshot = await uploadBytes(storageRef, file);
+        const url = await getDownloadURL(snapshot.ref);
+
+        // Insert image into editor
+        editor
+          .chain()
+          .focus()
+          .setImage({
+            src: url,
+            alt: file.name,
+            title: file.name,
+          })
+          .run();
+
+        setSaveStatus("saved");
+        toast.success("Image uploaded successfully");
       } catch (error) {
         console.error("Error uploading image:", error);
+        setSaveStatus("error");
+        toast.error(
+          error instanceof Error ? error.message : "Failed to upload image"
+        );
+      } finally {
+        setIsUploading(false);
       }
     },
-    [editor]
+    [editor, user]
   );
 
   const handleSketchSave = useCallback(
@@ -147,6 +243,43 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, updateNote }) => {
     },
     [editor]
   );
+
+  const WordCount = () => {
+    const wordCount = editor?.storage.characterCount.words() ?? 0;
+    const charCount = editor?.storage.characterCount.characters() ?? 0;
+
+    return (
+      <div className="text-sm text-muted-foreground flex items-center gap-2">
+        <span>{wordCount} words</span>
+        <span>•</span>
+        <span>{charCount} characters</span>
+      </div>
+    );
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!editor) return;
+
+    const element = document.createElement("div");
+    element.innerHTML = editor.getHTML();
+    element.className = "prose max-w-none mx-auto p-8";
+
+    const opt = {
+      margin: 1,
+      filename: `${title || "note"}.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
+    };
+
+    try {
+      await html2pdf().set(opt).from(element).save();
+      toast.success("PDF downloaded successfully");
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      toast.error("Failed to generate PDF");
+    }
+  };
 
   if (!note) {
     return (
@@ -173,9 +306,19 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, updateNote }) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background rounded-lg shadow-lg">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.3 }}
+      className="flex flex-col h-full bg-background rounded-lg shadow-lg overflow-hidden"
+    >
       {/* Top Bar */}
-      <div className="flex items-center justify-between p-4 border-b">
+      <motion.div
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.1 }}
+        className="flex items-center justify-between p-4 border-b"
+      >
         <div className="flex items-center flex-grow gap-4">
           <Input
             value={title}
@@ -187,50 +330,118 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, updateNote }) => {
               color: getHslColor(currentTheme.text),
             }}
           />
-          <span
+          <motion.span
+            key={saveStatus}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
             className="text-sm transition-colors duration-200 flex items-center gap-1"
             style={{ color: getSaveStatusColor() }}
           >
             {saveStatus === "saved" ? (
-              <>
+              <motion.div
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 200 }}
+              >
                 <Save className="w-4 h-4" /> Saved
-              </>
+              </motion.div>
             ) : saveStatus === "saving" ? (
-              "Saving..."
+              <motion.span
+                animate={{ opacity: [1, 0.5, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              >
+                Saving...
+              </motion.span>
             ) : (
               "Error saving"
             )}
-          </span>
+          </motion.span>
         </div>
-      </div>
+        <div className="flex items-center gap-2">
+          {editor && (
+            <WPMCounter editor={editor} isSaving={saveStatus === "saving"} />
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDownloadPDF}
+            className="ml-2"
+            title="Download as PDF"
+          >
+            <Download className="h-4 w-4" />
+          </Button>
+        </div>
+      </motion.div>
 
       {/* Toolbar */}
-      <Toolbar
-        editor={editor}
-        onImageUpload={handleImageUpload}
-        onSketchClick={() => setShowSketchPad(true)}
-      />
+      <motion.div
+        initial={{ y: -10, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2 }}
+      >
+        <Toolbar
+          editor={editor}
+          onImageUpload={handleImageUpload}
+          onSketchClick={() => setShowSketchPad(true)}
+          isUploading={isUploading}
+        />
+      </motion.div>
+
+      {editor && (
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.3 }}
+        >
+          <BubbleMenu editor={editor} />
+        </motion.div>
+      )}
 
       {/* Editor Area */}
-      <div className="flex-grow overflow-auto p-4">
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="flex-grow overflow-auto relative"
+      >
         <EditorContent
           editor={editor}
           className="h-full prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none"
           style={{
             backgroundColor: getHslColor(currentTheme.background),
             color: getHslColor(currentTheme.text),
+            padding: "2rem",
           }}
         />
-      </div>
+      </motion.div>
 
       {/* Sketch Pad Modal */}
-      {showSketchPad && (
-        <SketchPad
-          onSave={handleSketchSave}
-          onClose={() => setShowSketchPad(false)}
-        />
-      )}
-    </div>
+      <AnimatePresence>
+        {showSketchPad && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.2 }}
+          >
+            <SketchPad
+              onSave={handleSketchSave}
+              onClose={() => setShowSketchPad(false)}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Bottom Bar */}
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.3 }}
+        className="flex items-center justify-between p-4 border-t"
+      >
+        <WordCount />
+      </motion.div>
+    </motion.div>
   );
 };
 
