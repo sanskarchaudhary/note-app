@@ -73,6 +73,7 @@ const config: Config = {
         ],
         handwriting: ["var(--font-handwriting)", "cursive"],
         cursive: ["var(--font-cursive)", "cursive"],
+        casual: ["var(--font-casual)", "cursive"],
       },
     },
   },

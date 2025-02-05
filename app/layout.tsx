@@ -1,5 +1,5 @@
 import "./globals.css";
-import { Dancing_Script, Kalam } from "next/font/google";
+import { Kalam, Caveat, Indie_Flower } from "next/font/google";
 import ClientLayout from "./ClientLayout";
 import type React from "react";
 
@@ -9,10 +9,16 @@ const handwriting = Kalam({
   variable: "--font-handwriting",
 });
 
-const cursive = Dancing_Script({
+const cursive = Caveat({
   weight: ["400", "700"],
   subsets: ["latin"],
   variable: "--font-cursive",
+});
+
+const casual = Indie_Flower({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-casual",
 });
 
 export const metadata = {
@@ -28,7 +34,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${handwriting.variable} ${cursive.variable} font-handwriting`}
+        className={`${handwriting.variable} ${cursive.variable} ${casual.variable} font-handwriting`}
       >
         <ClientLayout>{children}</ClientLayout>
       </body>

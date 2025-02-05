@@ -189,6 +189,7 @@ body {
 .ProseMirror ol {
   padding: 0 0 0 1.5rem;
   margin: 0.5em 0;
+  font-family: var(--font-casual);
 }
 
 .ProseMirror li {
@@ -339,4 +340,23 @@ body {
 
 .toolbar-button {
   font-family: var(--font-handwriting);
+}
+
+.button,
+.input,
+.popover {
+  font-family: var(--font-handwriting);
+}
+
+.note-title {
+  font-family: var(--font-handwriting);
+  font-weight: 700;
+}
+
+.menu-item {
+  font-family: var(--font-casual);
+}
+
+.editor-content {
+  font-family: var(--font-cursive);
 }
