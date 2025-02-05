@@ -360,3 +360,29 @@ body {
 .editor-content {
   font-family: var(--font-cursive);
 }
+
+/* Font styles for editor content */
+.ProseMirror .font-handwriting {
+  font-family: var(--font-handwriting);
+}
+
+.ProseMirror .font-cursive {
+  font-family: var(--font-cursive);
+}
+
+.ProseMirror .font-casual {
+  font-family: var(--font-casual);
+}
+
+/* Preview styles in font selector */
+.font-selector .font-handwriting {
+  font-family: var(--font-handwriting);
+}
+
+.font-selector .font-cursive {
+  font-family: var(--font-cursive);
+}
+
+.font-selector .font-casual {
+  font-family: var(--font-casual);
+}
