@@ -72,6 +72,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, updateNote }) => {
         HTMLAttributes: {
           style: "",
         },
+        types: ["textStyle"],
       }),
       Color,
       Highlight.configure({ multicolor: true }),

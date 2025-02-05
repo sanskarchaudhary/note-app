@@ -52,10 +52,16 @@ export const FontSelector: React.FC<FontSelectorProps> = ({ editor }) => {
   if (!editor) return null;
 
   const setFontFamily = (fontFamily: string) => {
+    // First unset any existing font-family
+    editor.chain().focus().unsetMark("textStyle").run();
+
+    // Then apply the new font-family
     editor
       .chain()
       .focus()
-      .setMark("textStyle", { style: `font-family: ${fontFamily}` })
+      .setMark("textStyle", {
+        style: `font-family: ${fontFamily}`,
+      })
       .run();
 
     // Update recent fonts
@@ -82,7 +88,7 @@ export const FontSelector: React.FC<FontSelectorProps> = ({ editor }) => {
         font.label.toLowerCase().includes(search.toLowerCase())
       );
       if (filtered.length > 0) {
-      acc[category as FontCategory] = filtered;
+        acc[category as FontCategory] = filtered;
       }
       return acc;
     },
